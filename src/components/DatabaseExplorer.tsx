@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, Database, Table, Eye, Zap, Users, FolderOpen, MoreVertical } from 'lucide-react';
+import React, { useState, MouseEvent } from 'react';
+import { ChevronRight, ChevronDown, Database, Table, Eye, Zap, FolderOpen } from 'lucide-react';
 import { DatabaseObject } from '../types';
+import { ContextMenu } from './ContextMenu';
 
 interface DatabaseExplorerProps {
   connectionId: string;
   objects: DatabaseObject[];
   onSelectObject: (object: DatabaseObject) => void;
   onRefresh: () => void;
+  onAction: (action: string, object: DatabaseObject) => void;
+}
+
+interface ContextMenuData {
+  x: number;
+  y: number;
+  object: DatabaseObject;
 }
 
 export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
-  connectionId,
   objects,
   onSelectObject,
-  onRefresh
+  onRefresh,
+  onAction,
 }) => {
   const [expandedObjects, setExpandedObjects] = useState<Set<string>>(new Set());
   const [selectedObject, setSelectedObject] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
 
   const toggleExpanded = (path: string) => {
     const newExpanded = new Set(expandedObjects);
@@ -26,6 +35,22 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
       newExpanded.add(path);
     }
     setExpandedObjects(newExpanded);
+  };
+
+  const handleContextMenu = (event: MouseEvent, object: DatabaseObject) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setContextMenu({ x: event.clientX, y: event.clientY, object });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleContextMenuAction = (action: string) => {
+    if (contextMenu) {
+      onAction(action, contextMenu.object);
+    }
   };
 
   const getObjectIcon = (type: string) => {
@@ -45,7 +70,11 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
     const isSelected = selectedObject === path;
 
     return (
-      <div key={path} className="select-none">
+      <div
+        key={path}
+        className="select-none"
+        onContextMenu={(e) => handleContextMenu(e, obj)}
+      >
         <div
           className={`flex items-center space-x-2 py-2 px-3 cursor-pointer hover:bg-gray-800 transition-colors ${
             isSelected ? 'bg-gray-700' : ''
@@ -79,21 +108,11 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
               <span className="text-xs text-gray-500">({obj.rowCount.toLocaleString()})</span>
             )}
           </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Show context menu
-            }}
-            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded transition-all"
-          >
-            <MoreVertical className="w-3 h-3 text-gray-400" />
-          </button>
         </div>
 
         {hasChildren && isExpanded && obj.children && (
           <div>
-            {obj.children.map((child, index) => 
+            {obj.children.map((child) => 
               renderObject(child, `${path}.${child.name}`, level + 1)
             )}
           </div>
@@ -103,7 +122,7 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
   };
 
   return (
-    <div className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col">
+    <div className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col" onClick={handleCloseContextMenu}>
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">数据库结构</h2>
@@ -119,7 +138,7 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
       <div className="flex-1 overflow-auto">
         {objects.length > 0 ? (
           <div className="py-2">
-            {objects.map((obj, index) => 
+            {objects.map((obj) => 
               renderObject(obj, obj.name, 0)
             )}
           </div>
@@ -130,6 +149,16 @@ export const DatabaseExplorer: React.FC<DatabaseExplorerProps> = ({
           </div>
         )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          type={contextMenu.object.type as 'table' | 'database' | 'connection'}
+          onClose={handleCloseContextMenu}
+          onAction={handleContextMenuAction}
+        />
+      )}
     </div>
   );
 };

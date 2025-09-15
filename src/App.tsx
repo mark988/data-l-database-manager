@@ -14,6 +14,8 @@ import { QueryResults } from './components/QueryResults';
 import { BookmarkPanel } from './components/BookmarkPanel';
 import { ContextMenu } from './components/ContextMenu';
 import { DatabaseConnection, DatabaseObject, SQLTab, QueryResult, BookmarkedQuery } from './types';
+import { TableDesignerDialog } from './components/TableDesignerDialog';
+import { ConfirmationDialog } from './components/ConfirmationDialog';
 
 function App() {
   // Theme state with localStorage and system preference detection
@@ -146,7 +148,6 @@ function App() {
   } | null>(null);
 
   // UI State
-  const [showBookmarkPanel, setShowBookmarkPanel] = useState(true);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const [editingConnection, setEditingConnection] = useState<DatabaseConnection | null>(null);
   const [showConnectionProgress, setShowConnectionProgress] = useState(false);
@@ -158,6 +159,13 @@ function App() {
   const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'json' | null>(null);
   const [showBackupRestoreDialog, setShowBackupRestoreDialog] = useState(false);
   const [backupRestoreMode, setBackupRestoreMode] = useState<'backup' | 'restore'>('backup');
+  const [showTableDesigner, setShowTableDesigner] = useState(false);
+  const [selectedObjectForAction, setSelectedObjectForAction] = useState<DatabaseObject | null>(null);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [confirmationDialogConfig, setConfirmationDialogConfig] = useState<{ title: string; message: string; onConfirm: () => void; } | null>(null);
+  const [isConnectionManagerCollapsed, setIsConnectionManagerCollapsed] = useState(false);
+  const [isBookmarkPanelCollapsed, setIsBookmarkPanelCollapsed] = useState(false);
+
 
   // Connection handlers
   const handleAddConnection = () => {
@@ -416,8 +424,48 @@ function App() {
     setEditingBookmark(null);
   };
 
-  const handleContextMenuAction = (action: string) => {
-    console.log('Context menu action:', action);
+  const handleContextMenuAction = (action: string, object: DatabaseObject) => {
+    console.log('Context menu action:', action, object);
+    setSelectedObjectForAction(object);
+    if (action === 'create-table' || action === 'modify-table') {
+      setShowTableDesigner(true);
+    } else if (action === 'delete-table') {
+      setConfirmationDialogConfig({
+        title: '删除表',
+        message: `确定要删除表 "${object.name}"? 此操作不可撤销。`,
+        onConfirm: () => {
+          const sql = `DROP TABLE "${object.name}";`;
+          const newId = Date.now().toString();
+          const newTab: SQLTab = {
+            id: newId,
+            title: `删除表 - ${object.name}`,
+            content: sql,
+            isUnsaved: true,
+          };
+          setSqlTabs([...sqlTabs, newTab]);
+          setActiveTabId(newId);
+        }
+      });
+      setShowConfirmationDialog(true);
+    } else if (action === 'truncate-table') {
+      setConfirmationDialogConfig({
+        title: '清空数据',
+        message: `确定要清空表 "${object.name}" 中的所有数据? 此操作不可撤销。`,
+        onConfirm: () => {
+          const sql = `TRUNCATE TABLE "${object.name}";`;
+          const newId = Date.now().toString();
+          const newTab: SQLTab = {
+            id: newId,
+            title: `清空表 - ${object.name}`,
+            content: sql,
+            isUnsaved: true,
+          };
+          setSqlTabs([...sqlTabs, newTab]);
+          setActiveTabId(newId);
+        }
+      });
+      setShowConfirmationDialog(true);
+    }
     setContextMenu(null);
   };
 
@@ -542,6 +590,8 @@ function App() {
             onDeleteConnection={handleDeleteConnection}
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
+            isCollapsed={isConnectionManagerCollapsed}
+            onToggleCollapse={() => setIsConnectionManagerCollapsed(!isConnectionManagerCollapsed)}
           />
 
           <DatabaseExplorer
@@ -549,6 +599,7 @@ function App() {
             objects={databaseObjects}
             onSelectObject={handleSelectObject}
             onRefresh={handleRefreshObjects}
+            onAction={handleContextMenuAction}
           />
 
           <div className="flex-1 flex flex-col">
@@ -570,15 +621,15 @@ function App() {
             />
           </div>
 
-          {showBookmarkPanel && (
-            <BookmarkPanel
-              bookmarks={bookmarks}
-              onExecuteBookmark={handleExecuteBookmark}
-              onEditBookmark={handleEditBookmark}
-              onDeleteBookmark={handleDeleteBookmark}
-              onCreateBookmark={handleCreateBookmark}
-            />
-          )}
+          <BookmarkPanel
+            bookmarks={bookmarks}
+            onExecuteBookmark={handleExecuteBookmark}
+            onEditBookmark={handleEditBookmark}
+            onDeleteBookmark={handleDeleteBookmark}
+            onCreateBookmark={handleCreateBookmark}
+            isCollapsed={isBookmarkPanelCollapsed}
+            onToggleCollapse={() => setIsBookmarkPanelCollapsed(!isBookmarkPanelCollapsed)}
+          />
         </div>
 
         {contextMenu && (
@@ -633,6 +684,38 @@ function App() {
           connections={connections}
           mode={backupRestoreMode}
         />
+
+        <TableDesignerDialog
+          isOpen={showTableDesigner}
+          onClose={() => {
+            setShowTableDesigner(false);
+            setSelectedObjectForAction(null);
+          }}
+          onSave={(sql) => {
+            const newId = Date.now().toString();
+            const newTab: SQLTab = {
+              id: newId,
+              title: `修改表 - ${selectedObjectForAction?.name}`,
+              content: sql,
+              isUnsaved: true,
+            };
+            setSqlTabs([...sqlTabs, newTab]);
+            setActiveTabId(newId);
+            setShowTableDesigner(false);
+            setSelectedObjectForAction(null);
+          }}
+          table={selectedObjectForAction}
+        />
+
+        {showConfirmationDialog && confirmationDialogConfig && (
+          <ConfirmationDialog
+            isOpen={showConfirmationDialog}
+            onClose={() => setShowConfirmationDialog(false)}
+            onConfirm={confirmationDialogConfig.onConfirm}
+            title={confirmationDialogConfig.title}
+            message={confirmationDialogConfig.message}
+          />
+        )}
 
         <ToastContainer />
       </div>

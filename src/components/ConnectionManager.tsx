@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Database, Edit3, Trash2, Power, Key, Shield } from 'lucide-react';
+import React from 'react';
+import { Plus, Database, Edit3, Trash2, Power, Key, Shield, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { DatabaseConnection } from '../types';
 
 interface ConnectionManagerProps {
@@ -9,6 +9,8 @@ interface ConnectionManagerProps {
   onDeleteConnection: (connectionId: string) => void;
   onConnect: (connectionId: string) => void;
   onDisconnect: (connectionId: string) => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export const ConnectionManager: React.FC<ConnectionManagerProps> = ({
@@ -17,10 +19,10 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({
   onEditConnection,
   onDeleteConnection,
   onConnect,
-  onDisconnect
+  onDisconnect,
+  isCollapsed,
+  onToggleCollapse
 }) => {
-  const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<DatabaseConnection | null>(null);
 
   const getConnectionIcon = (type: string) => {
     switch (type) {
@@ -40,17 +42,55 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({
     }
   };
 
+  if (isCollapsed) {
+    return (
+      <div className="w-16 bg-gray-900 border-r border-gray-700 flex flex-col items-center py-4">
+        <button
+          onClick={onToggleCollapse}
+          className="p-2 text-gray-400 hover:text-white transition-colors mb-4"
+        >
+          <ChevronsRight className="w-5 h-5" />
+        </button>
+        <button
+          onClick={onAddConnection}
+          className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors mb-4"
+        >
+          <Plus className="w-4 h-4 text-white" />
+        </button>
+        <div className="space-y-4">
+          {connections.map(connection => (
+            <div key={connection.id} className="relative group">
+              <span className="text-2xl cursor-pointer" onClick={() => handleConnect(connection)}>{getConnectionIcon(connection.type)}</span>
+              {connection.isConnected && <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-900"></div>}
+              <div className="absolute left-full ml-2 w-48 bg-gray-800 text-white text-sm rounded p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {connection.name}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-80 bg-gray-900 border-r border-gray-700 flex flex-col">
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">连接管理</h2>
-          <button
-            onClick={onAddConnection}
-            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4 text-white" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onAddConnection}
+              className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4 text-white" />
+            </button>
+            <button
+              onClick={onToggleCollapse}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronsLeft className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 

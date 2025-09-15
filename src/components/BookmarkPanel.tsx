@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Plus, Search, Tag, Clock, Play, Edit3, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Search, Tag, Clock, Play, Edit3, Trash2, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { BookmarkedQuery } from '../types';
 
 interface BookmarkPanelProps {
@@ -8,6 +8,8 @@ interface BookmarkPanelProps {
   onEditBookmark: (bookmark: BookmarkedQuery) => void;
   onDeleteBookmark: (bookmarkId: string) => void;
   onCreateBookmark: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 export const BookmarkPanel: React.FC<BookmarkPanelProps> = ({
@@ -15,7 +17,9 @@ export const BookmarkPanel: React.FC<BookmarkPanelProps> = ({
   onExecuteBookmark,
   onEditBookmark,
   onDeleteBookmark,
-  onCreateBookmark
+  onCreateBookmark,
+  isCollapsed,
+  onToggleCollapse
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -32,17 +36,54 @@ export const BookmarkPanel: React.FC<BookmarkPanelProps> = ({
 
   const allTags = Array.from(new Set(bookmarks.flatMap(b => b.tags)));
 
+  if (isCollapsed) {
+    return (
+      <div className="w-16 bg-gray-900 border-l border-gray-700 flex flex-col items-center py-4">
+        <button
+          onClick={onToggleCollapse}
+          className="p-2 text-gray-400 hover:text-white transition-colors mb-4"
+        >
+          <ChevronsLeft className="w-5 h-5" />
+        </button>
+        <button
+          onClick={onCreateBookmark}
+          className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors mb-4"
+        >
+          <Plus className="w-4 h-4 text-white" />
+        </button>
+        <div className="space-y-4">
+          {bookmarks.map(bookmark => (
+            <div key={bookmark.id} className="relative group">
+              <BookOpen className="w-5 h-5 text-gray-400 cursor-pointer" onClick={() => onExecuteBookmark(bookmark)} />
+              <div className="absolute right-full mr-2 w-48 bg-gray-800 text-white text-sm rounded p-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {bookmark.name}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-80 bg-gray-900 border-l border-gray-700 flex flex-col">
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-white">SQL书签</h2>
-          <button
-            onClick={onCreateBookmark}
-            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4 text-white" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onCreateBookmark}
+              className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4 text-white" />
+            </button>
+            <button
+              onClick={onToggleCollapse}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronsRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search */}

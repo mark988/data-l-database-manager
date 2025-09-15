@@ -19,12 +19,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const menuItems = {
     table: [
       { icon: <Eye className="w-4 h-4" />, label: '查看数据', action: 'view-data' },
-      { icon: <Edit3 className="w-4 h-4" />, label: '编辑表结构', action: 'edit-structure' },
+      { icon: <Edit3 className="w-4 h-4" />, label: '修改表', action: 'modify-table' },
+      { icon: <Trash2 className="w-4 h-4" />, label: '删除表', action: 'delete-table', danger: true },
+      { icon: <Trash2 className="w-4 h-4" />, label: '清空数据', action: 'truncate-table', danger: true },
       { icon: <Copy className="w-4 h-4" />, label: '复制表名', action: 'copy-name' },
       { icon: <Download className="w-4 h-4" />, label: '导出数据', action: 'export-data' },
       { icon: <Upload className="w-4 h-4" />, label: '导入数据', action: 'import-data' },
       { icon: <RefreshCw className="w-4 h-4" />, label: '刷新', action: 'refresh' },
-      { icon: <Trash2 className="w-4 h-4" />, label: '删除表', action: 'delete-table', danger: true },
     ],
     database: [
       { icon: <Table className="w-4 h-4" />, label: '新建表', action: 'create-table' },
