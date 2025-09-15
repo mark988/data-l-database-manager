@@ -8,6 +8,9 @@ interface HeaderProps {
   onExecuteSQL: () => void;
   onStopExecution: () => void;
   isExecuting: boolean;
+  onShowSettings: () => void;
+  onSaveCurrentTab: () => void;
+  onCreateBookmark: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +19,10 @@ export const Header: React.FC<HeaderProps> = ({
   onGlobalSearch,
   onExecuteSQL,
   onStopExecution,
-  isExecuting
+  isExecuting,
+  onShowSettings,
+  onSaveCurrentTab,
+  onCreateBookmark
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -76,22 +82,35 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="w-px h-6 bg-gray-700"></div>
 
-        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+        <button 
+          onClick={onCreateBookmark}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+          title="添加书签"
+        >
           <BookOpen className="w-5 h-5" />
         </button>
 
-        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+        <button 
+          onClick={onSaveCurrentTab}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+          title="保存当前查询"
+        >
           <Save className="w-5 h-5" />
         </button>
 
         <button
           onClick={onToggleTheme}
           className="p-2 text-gray-400 hover:text-white transition-colors"
+          title={isDarkMode ? "切换到浅色模式" : "切换到深色模式"}
         >
           {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
-        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+        <button 
+          onClick={onShowSettings}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+          title="设置"
+        >
           <Settings className="w-5 h-5" />
         </button>
       </div>

@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ConnectionManager } from './components/ConnectionManager';
+import { ConnectionDialog } from './components/ConnectionDialog';
+import { ConnectionProgress } from './components/ConnectionProgress';
+import { BookmarkDialog } from './components/BookmarkDialog';
+import { SettingsDialog } from './components/SettingsDialog';
+import { ExportProgress } from './components/ExportProgress';
+import { ToastContainer } from './components/Toast';
 import { DatabaseExplorer } from './components/DatabaseExplorer';
 import { SQLEditor } from './components/SQLEditor';
 import { QueryResults } from './components/QueryResults';
@@ -132,14 +138,51 @@ function App() {
 
   // UI State
   const [showBookmarkPanel, setShowBookmarkPanel] = useState(true);
+  const [showConnectionDialog, setShowConnectionDialog] = useState(false);
+  const [editingConnection, setEditingConnection] = useState<DatabaseConnection | null>(null);
+  const [showConnectionProgress, setShowConnectionProgress] = useState(false);
+  const [connectingConnection, setConnectingConnection] = useState<DatabaseConnection | null>(null);
+  const [showBookmarkDialog, setShowBookmarkDialog] = useState(false);
+  const [editingBookmark, setEditingBookmark] = useState<BookmarkedQuery | null>(null);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showExportProgress, setShowExportProgress] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'json' | null>(null);
 
   // Connection handlers
   const handleAddConnection = () => {
-    console.log('Adding new connection...');
+    setEditingConnection(null);
+    setShowConnectionDialog(true);
   };
 
   const handleEditConnection = (connection: DatabaseConnection) => {
-    console.log('Editing connection:', connection.name);
+    setEditingConnection(connection);
+    setShowConnectionDialog(true);
+  };
+
+  const handleSaveConnection = (connectionData: Omit<DatabaseConnection, 'id' | 'isConnected' | 'lastConnected'>) => {
+    if (editingConnection) {
+      // 编辑现有连接
+      setConnections(connections.map(c => 
+        c.id === editingConnection.id 
+          ? { ...c, ...connectionData }
+          : c
+      ));
+    } else {
+      // 添加新连接
+      const newConnection: DatabaseConnection = {
+        ...connectionData,
+        id: Date.now().toString(),
+        isConnected: false
+      };
+      setConnections([...connections, newConnection]);
+    }
+    setShowConnectionDialog(false);
+    setEditingConnection(null);
+  };
+
+  const handleCloseConnectionDialog = () => {
+    setShowConnectionDialog(false);
+    setEditingConnection(null);
   };
 
   const handleDeleteConnection = (connectionId: string) => {
@@ -147,11 +190,11 @@ function App() {
   };
 
   const handleConnect = (connectionId: string) => {
-    setConnections(connections.map(c => 
-      c.id === connectionId 
-        ? { ...c, isConnected: true, lastConnected: new Date() }
-        : c
-    ));
+    const connection = connections.find(c => c.id === connectionId);
+    if (connection) {
+      setConnectingConnection(connection);
+      setShowConnectionProgress(true);
+    }
   };
 
   const handleDisconnect = (connectionId: string) => {
@@ -160,6 +203,21 @@ function App() {
         ? { ...c, isConnected: false }
         : c
     ));
+  };
+
+  const handleConnectionComplete = (success: boolean) => {
+    if (success && connectingConnection) {
+      setConnections(connections.map(c => 
+        c.id === connectingConnection.id 
+          ? { ...c, isConnected: true, lastConnected: new Date() }
+          : c
+      ));
+    }
+  };
+
+  const handleCloseConnectionProgress = () => {
+    setShowConnectionProgress(false);
+    setConnectingConnection(null);
   };
 
   // SQL Editor handlers
@@ -240,7 +298,32 @@ function App() {
 
   // Other handlers
   const handleGlobalSearch = (query: string) => {
-    console.log('Global search:', query);
+    if (!query.trim()) return;
+    
+    // 搜索数据库对象
+    const searchResults = databaseObjects.flatMap(db => 
+      db.children?.filter(obj => 
+        obj.name.toLowerCase().includes(query.toLowerCase())
+      ) || []
+    );
+
+    // 搜索书签
+    const bookmarkResults = bookmarks.filter(bookmark =>
+      bookmark.name.toLowerCase().includes(query.toLowerCase()) ||
+      bookmark.sql.toLowerCase().includes(query.toLowerCase()) ||
+      bookmark.description?.toLowerCase().includes(query.toLowerCase())
+    );
+
+    // 显示搜索结果
+    const event = new CustomEvent('show-toast', {
+      detail: { 
+        message: `找到 ${searchResults.length} 个数据库对象，${bookmarkResults.length} 个书签`, 
+        type: 'info' 
+      }
+    });
+    window.dispatchEvent(event);
+
+    console.log('Search results:', { objects: searchResults, bookmarks: bookmarkResults });
   };
 
   const handleSelectObject = (object: DatabaseObject) => {
@@ -252,7 +335,8 @@ function App() {
   };
 
   const handleExport = (format: 'csv' | 'excel' | 'json') => {
-    console.log('Exporting as:', format);
+    setExportFormat(format);
+    setShowExportProgress(true);
   };
 
   const handleExecuteBookmark = (bookmark: BookmarkedQuery) => {
@@ -269,20 +353,96 @@ function App() {
   };
 
   const handleEditBookmark = (bookmark: BookmarkedQuery) => {
-    console.log('Editing bookmark:', bookmark.name);
+    setEditingBookmark(bookmark);
+    setShowBookmarkDialog(true);
   };
 
   const handleDeleteBookmark = (bookmarkId: string) => {
     setBookmarks(bookmarks.filter(b => b.id !== bookmarkId));
+    const event = new CustomEvent('show-toast', {
+      detail: { message: '书签已删除', type: 'success' }
+    });
+    window.dispatchEvent(event);
   };
 
   const handleCreateBookmark = () => {
-    console.log('Creating new bookmark...');
+    const activeTab = sqlTabs.find(tab => tab.id === activeTabId);
+    setEditingBookmark(null);
+    setShowBookmarkDialog(true);
+  };
+
+  const handleSaveBookmark = (bookmarkData: Omit<BookmarkedQuery, 'id' | 'createdAt'>) => {
+    if (editingBookmark) {
+      // 编辑现有书签
+      setBookmarks(bookmarks.map(b => 
+        b.id === editingBookmark.id 
+          ? { ...b, ...bookmarkData }
+          : b
+      ));
+      const event = new CustomEvent('show-toast', {
+        detail: { message: '书签已更新', type: 'success' }
+      });
+      window.dispatchEvent(event);
+    } else {
+      // 添加新书签
+      const newBookmark: BookmarkedQuery = {
+        ...bookmarkData,
+        id: Date.now().toString(),
+        createdAt: new Date()
+      };
+      setBookmarks([...bookmarks, newBookmark]);
+      const event = new CustomEvent('show-toast', {
+        detail: { message: '书签已保存', type: 'success' }
+      });
+      window.dispatchEvent(event);
+    }
+    setShowBookmarkDialog(false);
+    setEditingBookmark(null);
+  };
+
+  const handleCloseBookmarkDialog = () => {
+    setShowBookmarkDialog(false);
+    setEditingBookmark(null);
   };
 
   const handleContextMenuAction = (action: string) => {
     console.log('Context menu action:', action);
     setContextMenu(null);
+  };
+
+  // 新增处理函数
+  const handleShowSettings = () => {
+    setShowSettingsDialog(true);
+  };
+
+  const handleSaveCurrentTab = () => {
+    const activeTab = sqlTabs.find(tab => tab.id === activeTabId);
+    if (activeTab) {
+      handleSaveTab(activeTabId);
+      const event = new CustomEvent('show-toast', {
+        detail: { message: '查询已保存', type: 'success' }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  const handleExportComplete = (success: boolean) => {
+    if (success) {
+      const event = new CustomEvent('show-toast', {
+        detail: { message: '导出成功', type: 'success' }
+      });
+      window.dispatchEvent(event);
+    } else {
+      const event = new CustomEvent('show-toast', {
+        detail: { message: '导出失败', type: 'error' }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  const handleCloseExportProgress = () => {
+    setShowExportProgress(false);
+    setExportFormat(null);
   };
 
   // Close context menu on click
@@ -302,6 +462,9 @@ function App() {
           onExecuteSQL={handleExecuteSQL}
           onStopExecution={handleStopExecution}
           isExecuting={isExecuting}
+          onShowSettings={handleShowSettings}
+          onSaveCurrentTab={handleSaveCurrentTab}
+          onCreateBookmark={handleCreateBookmark}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -360,6 +523,44 @@ function App() {
             onAction={handleContextMenuAction}
           />
         )}
+
+        <ConnectionDialog
+          isOpen={showConnectionDialog}
+          onClose={handleCloseConnectionDialog}
+          onSave={handleSaveConnection}
+          editingConnection={editingConnection}
+        />
+
+        <ConnectionProgress
+          isOpen={showConnectionProgress}
+          connection={connectingConnection}
+          onClose={handleCloseConnectionProgress}
+          onComplete={handleConnectionComplete}
+        />
+
+        <BookmarkDialog
+          isOpen={showBookmarkDialog}
+          onClose={handleCloseBookmarkDialog}
+          onSave={handleSaveBookmark}
+          editingBookmark={editingBookmark}
+          currentSQL={sqlTabs.find(tab => tab.id === activeTabId)?.content || ''}
+        />
+
+        <SettingsDialog
+          isOpen={showSettingsDialog}
+          onClose={() => setShowSettingsDialog(false)}
+          isDarkMode={isDarkMode}
+          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+        />
+
+        <ExportProgress
+          isOpen={showExportProgress}
+          format={exportFormat}
+          onClose={handleCloseExportProgress}
+          onComplete={handleExportComplete}
+        />
+
+        <ToastContainer />
       </div>
     </div>
   );
