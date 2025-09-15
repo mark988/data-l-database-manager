@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sun, Moon, Settings, BookOpen, Database, Save, Play, Square } from 'lucide-react';
+import { Search, Sun, Moon, Settings, BookOpen, Database, Save, Play, Square, Download, Upload } from 'lucide-react';
 
 interface HeaderProps {
   isDarkMode: boolean;
@@ -11,6 +11,8 @@ interface HeaderProps {
   onShowSettings: () => void;
   onSaveCurrentTab: () => void;
   onCreateBookmark: () => void;
+  onShowBackup: () => void;
+  onShowRestore: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,7 +24,9 @@ export const Header: React.FC<HeaderProps> = ({
   isExecuting,
   onShowSettings,
   onSaveCurrentTab,
-  onCreateBookmark
+  onCreateBookmark,
+  onShowBackup,
+  onShowRestore
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -96,6 +100,24 @@ export const Header: React.FC<HeaderProps> = ({
           title="保存当前查询"
         >
           <Save className="w-5 h-5" />
+        </button>
+
+        <div className="w-px h-6 bg-gray-700"></div>
+
+        <button 
+          onClick={onShowBackup}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+          title="数据库备份"
+        >
+          <Download className="w-5 h-5" />
+        </button>
+
+        <button 
+          onClick={onShowRestore}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+          title="数据库恢复"
+        >
+          <Upload className="w-5 h-5" />
         </button>
 
         <button

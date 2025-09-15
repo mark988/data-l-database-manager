@@ -6,6 +6,7 @@ import { ConnectionProgress } from './components/ConnectionProgress';
 import { BookmarkDialog } from './components/BookmarkDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ExportProgress } from './components/ExportProgress';
+import { BackupRestoreDialog } from './components/BackupRestoreDialog';
 import { ToastContainer } from './components/Toast';
 import { DatabaseExplorer } from './components/DatabaseExplorer';
 import { SQLEditor } from './components/SQLEditor';
@@ -15,8 +16,16 @@ import { ContextMenu } from './components/ContextMenu';
 import { DatabaseConnection, DatabaseObject, SQLTab, QueryResult, BookmarkedQuery } from './types';
 
 function App() {
-  // Theme state
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Theme state with localStorage and system preference detection
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage first
+    const savedTheme = localStorage.getItem('dataL-theme');
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    // Fall back to system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   
   // Connection management
   const [connections, setConnections] = useState<DatabaseConnection[]>([
@@ -147,6 +156,8 @@ function App() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showExportProgress, setShowExportProgress] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'excel' | 'json' | null>(null);
+  const [showBackupRestoreDialog, setShowBackupRestoreDialog] = useState(false);
+  const [backupRestoreMode, setBackupRestoreMode] = useState<'backup' | 'restore'>('backup');
 
   // Connection handlers
   const handleAddConnection = () => {
@@ -445,6 +456,36 @@ function App() {
     setExportFormat(null);
   };
 
+  const handleShowBackup = () => {
+    setBackupRestoreMode('backup');
+    setShowBackupRestoreDialog(true);
+  };
+
+  const handleShowRestore = () => {
+    setBackupRestoreMode('restore');
+    setShowBackupRestoreDialog(true);
+  };
+
+  const handleCloseBackupRestore = () => {
+    setShowBackupRestoreDialog(false);
+  };
+
+  // Theme management
+  const handleToggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    localStorage.setItem('dataL-theme', newTheme ? 'dark' : 'light');
+    
+    // Show toast notification
+    const event = new CustomEvent('show-toast', {
+      detail: { 
+        message: `已切换到${newTheme ? '深色' : '浅色'}模式`, 
+        type: 'info' 
+      }
+    });
+    window.dispatchEvent(event);
+  };
+
   // Close context menu on click
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
@@ -452,12 +493,36 @@ function App() {
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
+  // Theme initialization and system preference monitoring
+  useEffect(() => {
+    // Apply theme to document
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+      const savedTheme = localStorage.getItem('dataL-theme');
+      // Only auto-switch if user hasn't manually set a preference
+      if (!savedTheme) {
+        setIsDarkMode(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  }, [isDarkMode]);
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark' : ''}`}>
       <div className="bg-gray-100 dark:bg-gray-900 min-h-screen flex flex-col">
         <Header
           isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+          onToggleTheme={handleToggleTheme}
           onGlobalSearch={handleGlobalSearch}
           onExecuteSQL={handleExecuteSQL}
           onStopExecution={handleStopExecution}
@@ -465,6 +530,8 @@ function App() {
           onShowSettings={handleShowSettings}
           onSaveCurrentTab={handleSaveCurrentTab}
           onCreateBookmark={handleCreateBookmark}
+          onShowBackup={handleShowBackup}
+          onShowRestore={handleShowRestore}
         />
 
         <div className="flex-1 flex overflow-hidden">
@@ -550,7 +617,7 @@ function App() {
           isOpen={showSettingsDialog}
           onClose={() => setShowSettingsDialog(false)}
           isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+          onToggleTheme={handleToggleTheme}
         />
 
         <ExportProgress
@@ -558,6 +625,13 @@ function App() {
           format={exportFormat}
           onClose={handleCloseExportProgress}
           onComplete={handleExportComplete}
+        />
+
+        <BackupRestoreDialog
+          isOpen={showBackupRestoreDialog}
+          onClose={handleCloseBackupRestore}
+          connections={connections}
+          mode={backupRestoreMode}
         />
 
         <ToastContainer />
