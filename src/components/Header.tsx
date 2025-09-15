@@ -1,0 +1,100 @@
+import React, { useState } from 'react';
+import { Search, Sun, Moon, Settings, BookOpen, Database, Save, Play, Square } from 'lucide-react';
+
+interface HeaderProps {
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
+  onGlobalSearch: (query: string) => void;
+  onExecuteSQL: () => void;
+  onStopExecution: () => void;
+  isExecuting: boolean;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  isDarkMode,
+  onToggleTheme,
+  onGlobalSearch,
+  onExecuteSQL,
+  onStopExecution,
+  isExecuting
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    onGlobalSearch(searchQuery);
+  };
+
+  return (
+    <header className="bg-gray-900 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <Database className="text-blue-500 w-8 h-8" />
+          <h1 className="text-xl font-bold text-white">DATA-L</h1>
+          <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">v1.0.0</span>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-md mx-8">
+        <form onSubmit={handleSearch} className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索表、字段、SQL..."
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </form>
+      </div>
+
+      <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={onExecuteSQL}
+            disabled={isExecuting}
+            className={`flex items-center space-x-1 px-3 py-2 rounded-lg font-medium transition-all ${
+              isExecuting
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}
+          >
+            <Play className="w-4 h-4" />
+            <span>执行</span>
+          </button>
+          
+          {isExecuting && (
+            <button
+              onClick={onStopExecution}
+              className="flex items-center space-x-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <Square className="w-4 h-4" />
+              <span>停止</span>
+            </button>
+          )}
+        </div>
+
+        <div className="w-px h-6 bg-gray-700"></div>
+
+        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+          <BookOpen className="w-5 h-5" />
+        </button>
+
+        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+          <Save className="w-5 h-5" />
+        </button>
+
+        <button
+          onClick={onToggleTheme}
+          className="p-2 text-gray-400 hover:text-white transition-colors"
+        >
+          {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+
+        <button className="p-2 text-gray-400 hover:text-white transition-colors">
+          <Settings className="w-5 h-5" />
+        </button>
+      </div>
+    </header>
+  );
+};
