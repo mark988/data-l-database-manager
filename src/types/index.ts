@@ -64,3 +64,136 @@ export interface BookmarkedQuery {
   tags: string[];
   createdAt: Date;
 }
+
+export interface ERDiagramNode {
+  id: string;
+  tableName: string;
+  columns: TableColumn[];
+  position: { x: number; y: number };
+  foreignKeys: ForeignKeyRelation[];
+}
+
+export interface ForeignKeyRelation {
+  id: string;
+  sourceTable: string;
+  sourceColumn: string;
+  targetTable: string;
+  targetColumn: string;
+  type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+}
+
+export interface ERDiagramModel {
+  id: string;
+  name: string;
+  description?: string;
+  nodes: ERDiagramNode[];
+  connections: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MigrationTask {
+  id: string;
+  name: string;
+  sourceConnection: DatabaseConnection;
+  targetConnection: DatabaseConnection;
+  tables: string[];
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+  createdAt: Date;
+  completedAt?: Date;
+  logs: MigrationLog[];
+}
+
+export interface MigrationLog {
+  id: string;
+  timestamp: Date;
+  level: 'info' | 'warning' | 'error';
+  message: string;
+  details?: any;
+}
+
+export interface SQLTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  sql: string;
+  variables: TemplateVariable[];
+  category: string;
+  databaseType: 'mysql' | 'postgresql' | 'sqlserver' | 'all';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TemplateVariable {
+  name: string;
+  type: 'string' | 'number' | 'boolean';
+  defaultValue?: string;
+  required: boolean;
+  description?: string;
+}
+
+export interface ScheduledTask {
+  id: string;
+  name: string;
+  description?: string;
+  sql: string;
+  templateId?: string;
+  connectionId: string;
+  schedule: string; // cron expression
+  isActive: boolean;
+  nextRun?: Date;
+  lastRun?: Date;
+  status: 'idle' | 'running' | 'success' | 'failed';
+  createdAt: Date;
+  logs: TaskLog[];
+}
+
+export interface TaskLog {
+  id: string;
+  timestamp: Date;
+  status: 'success' | 'failed';
+  duration: number;
+  message?: string;
+  error?: string;
+}
+
+export interface PerformanceMetric {
+  id: string;
+  connectionId: string;
+  timestamp: Date;
+  cpuUsage: number;
+  memoryUsage: number;
+  connectionCount: number;
+  activeQueries: number;
+  locksCount: number;
+}
+
+export interface SlowQuery {
+  id: string;
+  connectionId: string;
+  sql: string;
+  executionTime: number;
+  timestamp: Date;
+  database: string;
+  user: string;
+  executionPlan?: string;
+  suggestions: OptimizationSuggestion[];
+}
+
+export interface OptimizationSuggestion {
+  type: 'index' | 'rewrite' | 'schema';
+  description: string;
+  impact: 'low' | 'medium' | 'high';
+  sql?: string;
+}
+
+export interface DatabaseStats {
+  connectionId: string;
+  timestamp: Date;
+  totalQueries: number;
+  slowQueries: number;
+  avgExecutionTime: number;
+  peakConnections: number;
+  indexHitRatio: number;
+}

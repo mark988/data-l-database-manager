@@ -16,6 +16,10 @@ import { ContextMenu } from './components/ContextMenu';
 import { DatabaseConnection, DatabaseObject, SQLTab, QueryResult, BookmarkedQuery } from './types';
 import { TableDesignerDialog } from './components/TableDesignerDialog';
 import { ConfirmationDialog } from './components/ConfirmationDialog';
+import ERModelManager from './components/ERModelManager';
+import DatabaseMigration from './components/DatabaseMigration';
+import SQLTemplateManager from './components/SQLTemplateManager';
+import PerformanceMonitor from './components/PerformanceMonitor';
 
 function App() {
   // Theme state with localStorage and system preference detection
@@ -28,6 +32,9 @@ function App() {
     // Fall back to system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+
+  // Active module state
+  const [activeModule, setActiveModule] = useState('sql-editor');
   
   // Connection management
   const [connections, setConnections] = useState<DatabaseConnection[]>([
@@ -251,6 +258,25 @@ function App() {
     setSqlTabs([...sqlTabs, newTab]);
     setActiveTabId(newId);
   };
+
+  // Create tab handler for templates
+  const handleCreateTabFromTemplate = (title: string, content: string) => {
+    const newId = Date.now().toString();
+    const newTab: SQLTab = {
+      id: newId,
+      title,
+      content,
+      isUnsaved: false
+    };
+    setSqlTabs([...sqlTabs, newTab]);
+    setActiveTabId(newId);
+    
+    // Switch to SQL editor module
+    setActiveModule('sql-editor');
+  };
+
+  // Connection selection for modules
+  const [selectedConnectionForModules, setSelectedConnectionForModules] = useState<DatabaseConnection | null>(connections.find(c => c.isConnected) || null);
 
   const handleCloseTab = (tabId: string) => {
     const newTabs = sqlTabs.filter(tab => tab.id !== tabId);
@@ -580,57 +606,90 @@ function App() {
           onCreateBookmark={handleCreateBookmark}
           onShowBackup={handleShowBackup}
           onShowRestore={handleShowRestore}
+          activeModule={activeModule}
+          onModuleChange={setActiveModule}
         />
 
-        <div className="flex-1 flex overflow-hidden">
-          <ConnectionManager
-            connections={connections}
-            onAddConnection={handleAddConnection}
-            onEditConnection={handleEditConnection}
-            onDeleteConnection={handleDeleteConnection}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-            isCollapsed={isConnectionManagerCollapsed}
-            onToggleCollapse={() => setIsConnectionManagerCollapsed(!isConnectionManagerCollapsed)}
-          />
-
-          <DatabaseExplorer
-            connectionId="1"
-            objects={databaseObjects}
-            onSelectObject={handleSelectObject}
-            onRefresh={handleRefreshObjects}
-            onAction={handleContextMenuAction}
-          />
-
-          <div className="flex-1 flex flex-col">
-            <SQLEditor
-              tabs={sqlTabs}
-              activeTabId={activeTabId}
-              onCreateTab={handleCreateTab}
-              onCloseTab={handleCloseTab}
-              onSwitchTab={setActiveTabId}
-              onUpdateTab={handleUpdateTab}
-              onSaveTab={handleSaveTab}
+        {/* Render different modules based on active module */}
+        {activeModule === 'sql-editor' && (
+          <div className="flex-1 flex overflow-hidden">
+            <ConnectionManager
+              connections={connections}
+              onAddConnection={handleAddConnection}
+              onEditConnection={handleEditConnection}
+              onDeleteConnection={handleDeleteConnection}
+              onConnect={handleConnect}
+              onDisconnect={handleDisconnect}
+              isCollapsed={isConnectionManagerCollapsed}
+              onToggleCollapse={() => setIsConnectionManagerCollapsed(!isConnectionManagerCollapsed)}
             />
 
-            <QueryResults
-              result={queryResult}
-              isExecuting={isExecuting}
-              error={executionError || undefined}
-              onExport={handleExport}
+            <DatabaseExplorer
+              connectionId="1"
+              objects={databaseObjects}
+              onSelectObject={handleSelectObject}
+              onRefresh={handleRefreshObjects}
+              onAction={handleContextMenuAction}
+            />
+
+            <div className="flex-1 flex flex-col">
+              <SQLEditor
+                tabs={sqlTabs}
+                activeTabId={activeTabId}
+                onCreateTab={handleCreateTab}
+                onCloseTab={handleCloseTab}
+                onSwitchTab={setActiveTabId}
+                onUpdateTab={handleUpdateTab}
+                onSaveTab={handleSaveTab}
+              />
+
+              <QueryResults
+                result={queryResult}
+                isExecuting={isExecuting}
+                error={executionError || undefined}
+                onExport={handleExport}
+              />
+            </div>
+
+            <BookmarkPanel
+              bookmarks={bookmarks}
+              onExecuteBookmark={handleExecuteBookmark}
+              onEditBookmark={handleEditBookmark}
+              onDeleteBookmark={handleDeleteBookmark}
+              onCreateBookmark={handleCreateBookmark}
+              isCollapsed={isBookmarkPanelCollapsed}
+              onToggleCollapse={() => setIsBookmarkPanelCollapsed(!isBookmarkPanelCollapsed)}
             />
           </div>
+        )}
 
-          <BookmarkPanel
-            bookmarks={bookmarks}
-            onExecuteBookmark={handleExecuteBookmark}
-            onEditBookmark={handleEditBookmark}
-            onDeleteBookmark={handleDeleteBookmark}
-            onCreateBookmark={handleCreateBookmark}
-            isCollapsed={isBookmarkPanelCollapsed}
-            onToggleCollapse={() => setIsBookmarkPanelCollapsed(!isBookmarkPanelCollapsed)}
+        {activeModule === 'er-model' && (
+          <ERModelManager
+            connections={connections}
+            selectedConnection={selectedConnectionForModules}
+            onConnectionSelect={setSelectedConnectionForModules}
           />
-        </div>
+        )}
+
+        {activeModule === 'migration' && (
+          <DatabaseMigration
+            connections={connections}
+          />
+        )}
+
+        {activeModule === 'templates' && (
+          <SQLTemplateManager
+            onCreateTab={handleCreateTabFromTemplate}
+          />
+        )}
+
+        {activeModule === 'monitor' && (
+          <PerformanceMonitor
+            connections={connections}
+            selectedConnection={selectedConnectionForModules}
+            onConnectionSelect={setSelectedConnectionForModules}
+          />
+        )}
 
         {contextMenu && (
           <ContextMenu
