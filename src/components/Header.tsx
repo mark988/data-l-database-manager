@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-2">
             <Database className="text-blue-500 w-8 h-8" />
             <h1 className="text-xl font-bold text-white">DATA-L</h1>
-            <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">v1.0.0</span>
+            <span className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">v2.0</span>
           </div>
         </div>
 
